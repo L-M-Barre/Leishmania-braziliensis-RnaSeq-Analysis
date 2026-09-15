@@ -1,0 +1,351 @@
+# FULL COMMAND WORKFLOW: -------------------------------------------------------------------------------
+# FILE NAMES: ending in 1: forward reads, ending in 2: reverse reads
+    # amastigote-SRR7945375_1a.fastq /
+    # amastigote-SRR7945375_2a.fastq /
+    # amastigote-SRR7945380_1b.fastq /
+    # amastigote-SRR7945380_2b.fastq /
+    # amastigote-SRR7945376_1c.fastq /
+    # amastigote-SRR7945376_2c.fastq /
+    # promastigote-SRR7945368_1a.fastq /
+    # promastigote-SRR7945368_2a.fastq /
+    # promastigote-SRR7945367_1b.fastq /
+    # promastigote-SRR7945367_2b.fastq /
+    # promastigote-SRR7945369_1c.fastq /
+    # promastigote-SRR7945369_2c.fastq /
+    # reference genome: GCF_000002845.2_ASM284v2_genomic.fna
+    # reference genome annotation: 
+        # genomic_ref_annotations.gff
+        # genomic_ref_annotations.gtf
+
+# DOWNLOADING TOOLS: --------------------------------------------------------------------
+# TERMINAL ANALYSIS DOWNLOAD COMMANDS: download commands for Hisat2, samtools, HTSeq
+    # homebrew needed:
+        # download in terminal:
+            brew install hisat2
+                # check instalation: 
+                    hisat2 --version
+            brew install samtools
+                # check instalation: 
+                    samtools --version
+
+        # Tap into brewsci/bio repository to install hisat2:
+            brew tap brewsci/bio
+            brew install brewsci/bio/hisat2
+
+    # HTSeq install in python terminal:
+        pip install HTSeq
+            # check instalation: 
+                python3 -c "import HTSeq; print(HTSeq.__version__)"
+
+# FastQC quality control:
+    # use link below to download FastQC, 
+    https://www.bioinformatics.babraham.ac.uk/projects/download.html#fastqc
+        # Mac download: download FastQC v0.12.1 (Mac DMG image)
+            # Mac download didn't work, used windows download and dragged zip file into applications folder, then ran commands below in terminal.
+                # Windows download: FastQC v0.12.1 (Win/Linux zip file)
+                # make FastQC executable: 
+                    chmod +x /Applications/FastQC/fastqc
+                # add FastQC to path: 
+                    sudo ln -s /Applications/FastQC/fastqc /usr/local/bin/fastqc
+
+
+# GENERATING FASTQC REPORTS: [MAC] --------------------------------------------------------------------
+# In terminal draw path using: /Applications/FastQC/fastqc ~/Desktop/sample_?.fastq (copy paste file name at end of command)
+    # eg: /Applications/FastQC/fastqc ~/Desktop/promastigote-SRR7945369_2c.fastq
+
+# Quality reports then accessible via html file
+
+# HISAT2 INDEXING: [MAC] --------------------------------------------------------------------
+# created folder called Lbraz_reference
+    # renamed reference genome & annotation genomes to: 
+        ref_genome.fna
+        gen_annotation.gtf
+        gen_annotation2.gff
+
+# build index:
+    cd ~/Desktop/Lbraz_reference
+    hisat2-build ref_genome.fna Lbraz_index
+        # if successful, will show: 
+            # Lbraz_index.1.ht2
+            # Lbraz_index.2.ht2
+            # etc, until Lbraz_index.8.ht2
+
+# Align each sample with HISAT2 in terminal:
+    cd ~/Desktop #(if process stalls, run this command again, or restart terminal)
+
+# Amastigote samples: 
+     hisat2 -x ~/Desktop/Lbraz_reference/Lbraz_index \
+       -1 "amastigote - sample_name.fastq" \
+       -2 "amastigote - sample_name.fastq" \
+       -S amastigote.sam
+        # each .sam file renamed according to which sample group it belongs to, eg: amastigote-a.sam, amastigote-b.sam, amastigote-c.sam
+
+# Promastigote samples:
+    hisat2 -x ~/Desktop/Lbraz_reference/Lbraz_index \
+       -1 "promastigote - SRR7945368_1.fastq" \
+       -2 "promastigote - SRR7945368_2.fastq" \
+       -S promastigote.sam
+        # each .sam file renamed according to which sample group it belongs to, eg: promastigote-a.sam, promastigote-b.sam, promastigote-c.sam
+
+# READ ALIGNMENTS: --------------------------------------------------------------------
+# SAM -> BAM -> SORTED BAM CONVERSIONS: [MAC] ---------------------------------------------------------------------
+# run all commands in terminal:
+    # amastigote file:
+    samtools view -bS amastigote-?.sam > amastigote-?.bam (amastigote.sam file name changed to match sample group, eg: amastigote-a.sam, amastigote-b.sam, amastigote-c.sam)
+    samtools sort amastigote-?.bam -o amastigote-?.sorted.bam
+
+    # promastigote file:
+    samtools view -bS promastigote-?.sam > promastigote-?.bam (promastigote.sam file name changed to match sample group, eg: promastigote-a.sam, promastigote-b.sam, promastigote-c.sam)
+    samtools sort promastigote-?.bam -o promastigote-?.sorted.bam
+
+# HTSEQ COUNTING: ---------------------------------------------------------------------
+# run all commands in terminal:
+    # amastigote file:
+        htseq-count -f bam -r pos ~/Desktop/amastigote-?.sorted.bam \
+          ~/Desktop/Lbraz_reference/gen_annotation.gtf \
+          > ~/Desktop/amastigote-?_counts.txt
+
+    # promastigote file:
+        htseq-count -f bam -r pos ~/Desktop/promastigote-?.sorted.bam \
+          ~/Desktop/Lbraz_reference/gen_annotation.gtf \
+          > ~/Desktop/promastigote-?_counts.txt
+
+# R STUDIO COMMANDS: [MAC] ---------------------------------------------------------------------
+    # DESEQ2 ANALYSIS: 
+        # installing packages:
+            install.packages("BiocManager")
+            BiocManager::install("DESeq2")
+        # Loading DESeq2 library:
+            library(DESeq2)
+        # access files (mine are on desktop):
+            setwd("~/Desktop")
+        # load count files into R: create count file for each sample group, eg: amastigote-a.txt, etc.., promastigote-a.txt, etc...
+            # amastigote count files:
+                amast_a <- read.table("amastigote-a_counts.txt", header = FALSE)
+                amast_b <- read.table("amastigote-b_counts.txt", header = FALSE)
+                amast_c <- read.table("amastigote-c_counts.txt", header = FALSE)
+            # promastigote count files:
+                promast_a <- read.table("promastigote-a_counts.txt", header = FALSE)
+                promast_b <- read.table("promastigote-b_counts.txt", header = FALSE)
+                promast_c <- read.table("promastigote-c_counts.txt", header = FALSE)
+
+        # create a count matrix: (genes as rows, samples as columns) (This one is a six column matrix)
+            counts <- cbind(
+             amast_a[,2],
+             amast_b[,2],
+             amast_c[,2],
+             promast_a[,2],
+             promast_b[,2],
+             promast_c[,2]
+            )
+
+            rownames(counts) <- amast_a[,1]
+
+            colnames(counts) <- c(
+              "amast_a", "amast_b", "amast_c",
+              "promast_a", "promast_b", "promast_c"
+            )
+
+        # create sample metadata:
+            condition <- factor(c(
+             "amastigote", "amastigote", "amastigote",
+             "promastigote", "promastigote", "promastigote"
+            ))
+
+            coldata <- data.frame(
+             row.names = colnames(counts),
+             condition = condition
+            )
+
+        # create DESeq2 dataset:
+            library(DESeq2)
+            # then copy paste below as chunk:
+            dds <- DESeqDataSetFromMatrix(
+            countData = counts,
+            colData = coldata,
+            design = ~ condition
+            )
+        # run DESeq2 analysis:
+            dds <- DESeq(dds)
+            res <- results(dds)
+        # save DESeq2 results: 
+            write.csv(as.data.frame(res), "deseq2_results_3v3.csv")
+
+    # R STUDIO VOLCANO PLOT:
+        library(ggplot2)
+            # Convert DESeq2 results to a data frame:  
+                res_df <- as.data.frame(res)
+            # filter out padj values (adjusted p-values) that are NA: 
+                res_df <- res_df[!is.na(res_df$padj), ]
+            # create a collumn to indicate signoficance: 
+                res_df$significant <- ifelse(
+                  res_df$padj < 0.05 & abs(res_df$log2FoldChange) > 1,
+                  "Significant",
+                  "Not Significant"
+                )
+
+        # create a volcano plot:
+            ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), color = significant)) +
+                geom_point(alpha = 0.7, size = 1.8) +
+                scale_color_manual(values = c("grey60", "red")) +
+                theme_minimal(base_size = 14)
+
+            ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), color = significant)) +
+                geom_point(alpha = 0.7, size = 1.8) +
+                scale_color_manual(values = c("grey60", "blue")) +
+                theme_minimal(base_size = 14) +
+                labs(
+                    title = "Volcano Plot: Amastigote vs Promastigote",
+                    x = "log2 Fold Change",
+                    y = "-log10 Adjusted p-value"
+                ) +
+                theme(
+                    plot.title = element_text(hjust = 0.5),
+                    legend.title = element_blank()
+                )
+
+                labs(
+                    title = "Volcano Plot: Amastigote vs Promastigote",
+                    x = "log2 Fold Change",
+                    y = "-log10 Adjusted p-value"
+                ) +
+                theme(
+                    plot.title = element_text(hjust = 0.5),
+                    legend.title = element_blank()
+                )
+            
+        # label significant genes on plot: 
+        # install ggrepel package if not already installed:
+                install.packages("ggrepel")
+
+                library(ggrepel)
+
+                top_genes <- res_df[order(res_df$padj), ][1:10, ]
+
+                ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), color = significant)) +
+                geom_point(alpha = 0.7, size = 1.8) +
+
+            # Label top genes and add Threshold lines:
+            # this adds labels to each significant plot, shows the level of up/downregulation and statistical significance. 
+
+                ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), color = significant)) +
+                geom_point(alpha = 0.7, size = 1.8) +
+                geom_text_repel( #label top genes section
+                    data = top_genes,
+                    aes(label = rownames(top_genes)),
+                    size = 3,
+                    box.padding = 0.4,
+                    max.overlaps = 10
+                    ) +
+                    geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black", linewidth = 0.7) + # threshold line section
+                    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black", linewidth = 0.7) +
+                    scale_color_manual(values = c("grey60", "blue")) +
+                theme_minimal(base_size = 14) +
+                labs(
+                    title = "Volcano Plot with Top Gene Labels",
+                    x = "log2 Fold Change",
+                    y = "-log10 Adjusted p-value"
+                ) +
+                theme(
+                    plot.title = element_text(hjust = 0.5),
+                    legend.title = element_blank()
+                )
+                   
+            # Extracting significant genes to a new data frame for further analysis: 
+
+                sig_genes <- res_df[
+                res_df$padj < 0.05 & abs(res_df$log2FoldChange) > 1,
+                ]
+
+                # check # of significant genes: 
+                    nrow(sig_genes)
+                    # 18 in sample
+
+                # check upregulation vs downregulation:
+                    table(sig_genes$log2FoldChange > 0)
+                    # FALSE = 12, TRUE = 6
+
+                # labelling of upreg vs downreg genes: for clarity, otherwise TRUE = upregulated, FALSE = downregulated
+                    upreg   <- sum(sig_genes$log2FoldChange > 0)
+                    downreg <- sum(sig_genes$log2FoldChange < 0)
+
+                    upreg
+                    downreg
+                            
+                # save significant genes to a CSV file for further analysis:
+                    write.csv(sig_genes, "significant_genes.csv")
+
+                # extract upreg/downreg gene list to csv
+                    upregulated_genes <- sig_genes[sig_genes$log2FoldChange > 0, ]
+
+                    downregulated_genes <- sig_genes[sig_genes$log2FoldChange < 0, ]
+
+                # save csv:
+                    write.csv(upregulated_genes, "upregulated_genes.csv")
+                    write.csv(downregulated_genes, "downregulated_genes.csv")
+
+                # create a upreg vs downreg summary table: 
+                    data.frame(
+                        Direction = c("Upregulated", "Downregulated"),
+                        Count = c(upreg, downreg)
+                    )
+
+                    # summary table output:
+                            Direction Count
+                    1   Upregulated     6
+                    2 Downregulated    12
+                                
+        # Creating a heatmap: 
+            # view the top hits: 
+                head(sig_genes[order(sig_genes$padj), ])
+            # pick top 50 genes to plot:
+                top50 <- sig_genes[order(sig_genes$padj), ][1:50, ]
+            # extract normalised counts:
+                norm_counts <- counts(dds, normalized = TRUE)
+            # subset normalised counts for top 50 genes:
+               top50 <- sig_genes[order(sig_genes$padj), ][1:50, ]
+            # match gene names:
+                idx <- match(rownames(top50), rownames(norm_counts))
+            # check it worked: (desired output: numbers and some NAs)
+                idx
+            # remove unmatched genes: 
+                idx <- idx[!is.na(idx)]
+
+            # extract counts using matched indices:
+                top50_counts <- norm_counts[idx, ]
+            # log transform:
+                top50_log <- log2(top50_counts + 1)
+
+            # download pheatmap library if not already installed:
+                install.packages("pheatmap")
+                library(pheatmap)
+
+        # create heatmap:
+                pheatmap(
+                top50_log,
+                scale = "row",                 # standardises each gene
+                clustering_distance_rows = "euclidean",
+                clustering_distance_cols = "euclidean",
+                clustering_method = "complete",
+                show_rownames = TRUE,
+                show_colnames = TRUE,
+                fontsize_row = 6,
+                fontsize_col = 10,
+                main = "Top 50 Differentially Expressed Genes"
+                )
+
+            # sample conditioning colours:
+                annotation <- data.frame(
+                Condition = c("Amastigote", "Amastigote", "Amastigote",
+                                "Promastigote", "Promastigote", "Promastigote")
+                )
+                rownames(annotation) <- colnames(top50_log)
+
+                pheatmap(
+                top50_log,
+                scale = "row",
+                annotation_col = annotation,
+                main = "Top 50 Differentially Expressed Genes"
+                )
+
+l.m.m.b
