@@ -113,11 +113,11 @@ The volcano plot generated shows a mixture of downregulated and upregulated gene
 
 **Volcano Plot 1:**
 
-![Volcano Plot](lbraz_project/plots/volc-plt-1.png)
+![Volcano Plot](Lbraz_project/plots/volc-plt-1.png)
     
 **Volcano Plot 2:**
 
-![Volcano Plot](lbraz_project/plots/volc-plt-2-wthresh.png)
+![Volcano Plot](Lbraz_project/plots/volc-plt-2-wthresh.png)
    
 <div align="left">
 
@@ -137,11 +137,11 @@ There are **6 significant upregulated genes** between 0 and +4 log2 fold change.
 
 **Heatmat Plot 1:**
 
-![Heatmap (Standard)](lbraz_project/plots/heatmap-1-standard.png)
+![Heatmap (Standard)](Lbraz_project/plots/heatmap-1-standard.png)
 
 **Heatmap Plot 2:**
     
-![Heatmap (Annotated)](lbraz_project/plots/heatmap-2-annotated.png)
+![Heatmap (Annotated)](Lbraz_project/plots/heatmap-2-annotated.png)
 
 <div align="left">
 
